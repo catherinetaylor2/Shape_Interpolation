@@ -14,6 +14,26 @@
 #include <omp.h> 
 
 
+void array_multiply(float**current_array, float* input_array, int array_length, float factor){
+   for (int i=0; i< array_length;i++){
+        (*current_array)[i] = factor*(input_array)[i];
+   }
+}
+void array_sum(float**array1, float*array2, int array_length){
+    for (int i=0; i<array_length; i++){
+        (*array1)[i] = (*array1)[i]+array2[i];
+    }
+}
+void V1_to_V2(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){ //current pos1 saves value.
+    array_multiply(current_position1, input_array, array_length, (1-t));
+    array_multiply(current_position2, input_array, array_length, t);
+    array_sum(current_position1, *current_position2, array_length);
+}
+void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
+    array_multiply(current_position1, input_array, array_length, t);
+    array_multiply(current_position2, input_array, array_length, 1-t);
+    array_sum(current_position1, *current_position2, array_length);
+}
 
  int main(){
     ObjFile mesh("dino.obj"); // load mesh information from object file.
@@ -25,7 +45,26 @@
     mesh.get_face_data(&FV, &FN, &F_VT);
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
+
+    ObjFile mesh_2("keyframe1.obj");
+    float* V2 , *N2, *VT2;
+    int *FV2, *FN2, *F_VT2;
+    mesh.get_vertices(&V2);
+    mesh.get_texture(&VT2);
+    mesh.get_normals(&N2);
+    mesh.get_face_data(&FV2, &FN2, &F_VT2);
+     for(int i=0; i<3*number_of_vertices;i+=3){
+        V2[i+1]=V2[i+1];
+        V2[i]=V2[i];
+        V2[i+2]=V2[i+2];
+    }
+
+    float* V_intermediate_1 = new float[3*number_of_vertices];
+    float* V_intermediate_2 = new float[3*number_of_vertices];
+
+
     float scale = 0.2;
+    int total_interpolations = 100;
 
     glfwInit();
 
@@ -103,7 +142,10 @@
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3*number_of_faces*sizeof(unsigned int), indices, GL_DYNAMIC_DRAW); 
 
+    int it=0;
     while(!glfwWindowShouldClose(window)){
+        it=it+1;
+       
 
         // Clear the screen
         glClear( GL_COLOR_BUFFER_BIT );
@@ -149,8 +191,16 @@
     delete FV;
     delete FN;
     delete F_VT;
+    delete V2;
+    delete N2;
+    delete VT2;
+    delete FV2;
+    delete FN2;
+    delete F_VT2;
     delete vertices;
     delete indices;
+    delete V_intermediate_1;
+    delete V_intermediate_2;
 
     return 0;
  }
