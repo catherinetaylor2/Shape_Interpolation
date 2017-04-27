@@ -41,7 +41,7 @@ void ObjFile::get_vertices(float** V){
     s = str;  
   }
   for(int i=0; i<3*number_of_vertices; i+=3){
-    (*V)[i] = -f1;
+    (*V)[i] = f1;
     (*V)[i+1] = f2;
     (*V)[i+2]=f3; 
     t = fscanf(myObject, "%s %f %f %f" , str, &f1, &f2, &f3);
@@ -76,7 +76,7 @@ void ObjFile::get_normals(float** N){
     s = str;  
   }
   for(int i=0; i<3*number_of_normals; i+=3){
-    (*N)[i] = -f1;
+    (*N)[i] = f1;
     (*N)[i+1] = f2;
     (*N)[i+2]=f3;   
     fscanf(myObject, "%s %f %f %f" , str, &f1, &f2, &f3);
