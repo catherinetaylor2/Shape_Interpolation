@@ -29,7 +29,6 @@ void array_sum(float** new_array, float*array1, float*array2, int array_length){
 void V1_to_V2(float*input_array, float*goal_array, float**current_position, float t, int array_length){ //current pos1 saves value.
     float*current_position1 = new float[3*array_length];
     float*current_position2 = new float[3*array_length];
-
     array_multiply(&current_position1, input_array, array_length, (1-t));
     array_multiply(&current_position2, goal_array, array_length, t);
     array_sum(current_position, current_position1, current_position2, array_length);
@@ -41,14 +40,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        reverse = !reverse;
        iterations=1;
        t=0;
-    }
-    
+    }   
 }
-// void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
-//     array_multiply(current_position1, input_array, array_length, t);
-//     array_multiply(current_position2, input_array, array_length, 1-t);
-//     array_sum(current_position, *current_position1, *current_position2, array_length);
-// }
 
  int main(){
     ObjFile mesh("dino2.obj"); // load mesh information from object file.
@@ -225,21 +218,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glDeleteBuffers(1, &vertexBuffer);
     glDeleteBuffers(1, &IBO);    
 
-    delete V;
-    delete N;
-    delete VT;
-    delete FV;
-    delete FN;
-    delete F_VT;
-    delete V2;
-    delete N2;
-    delete VT2;
-    delete FV2;
-    delete FN2;
-    delete F_VT2;
-    delete vertices;
-    delete indices;
-    delete V_intermediate;
+    mesh.clean_up(V,N, VT, FV, FN, F_VT);
+    mesh_2.clean_up(V2, N2, VT2, FV2, FN2, F_VT2);
+    delete[] vertices;
+    delete[] indices;
+    delete[] V_intermediate;
 
     return 0;
  }

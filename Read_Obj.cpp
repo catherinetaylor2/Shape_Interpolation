@@ -196,4 +196,12 @@ int ObjFile::get_number_of_faces(void){
 int ObjFile::get_number_of_vertices(void){
   return number_of_vertices;
 }
+void ObjFile::clean_up(float*vertices, float* normals, float* texture_coords,int* face_vertex, int* face_normals, int* face_textures){
+  delete [] vertices;
+  delete [] normals;
+  delete [] texture_coords;
+  delete [] face_vertex;
+  delete [] face_normals;
+  delete [] face_textures;
+}
 
