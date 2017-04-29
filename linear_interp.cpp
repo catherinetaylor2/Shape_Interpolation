@@ -19,24 +19,24 @@ void array_multiply(float**current_array, float* input_array, int array_length, 
         (*current_array)[i] = factor*(input_array)[i];
    }
 }
-void array_sum(float**array1, float*array2, int array_length){
+void array_sum(float** new_array, float*array1, float*array2, int array_length){
     for (int i=0; i<array_length; i++){
-        (*array1)[i] = (*array1)[i]+array2[i];
+        (*new_array)[i] =array1 [i]+array2[i];
     }
 }
-void V1_to_V2(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){ //current pos1 saves value.
+void V1_to_V2(float*input_array, float*goal_array, float**current_position, float**current_position1,float**current_position2, float t, int array_length){ //current pos1 saves value.
     array_multiply(current_position1, input_array, array_length, (1-t));
-    array_multiply(current_position2, input_array, array_length, t);
-    array_sum(current_position1, *current_position2, array_length);
+    array_multiply(current_position2, goal_array, array_length, t);
+    array_sum(current_position, *current_position1, *current_position2, array_length);
 }
-void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
-    array_multiply(current_position1, input_array, array_length, t);
-    array_multiply(current_position2, input_array, array_length, 1-t);
-    array_sum(current_position1, *current_position2, array_length);
-}
+// void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
+//     array_multiply(current_position1, input_array, array_length, t);
+//     array_multiply(current_position2, input_array, array_length, 1-t);
+//     array_sum(current_position, *current_position1, *current_position2, array_length);
+// }
 
  int main(){
-    ObjFile mesh("dino.obj"); // load mesh information from object file.
+    ObjFile mesh("dino2.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -45,26 +45,28 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
     mesh.get_face_data(&FV, &FN, &F_VT);
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
+  
 
     ObjFile mesh_2("keyframe1.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
-    mesh.get_vertices(&V2);
-    mesh.get_texture(&VT2);
-    mesh.get_normals(&N2);
-    mesh.get_face_data(&FV2, &FN2, &F_VT2);
-     for(int i=0; i<3*number_of_vertices;i+=3){
-        V2[i+1]=V2[i+1];
-        V2[i]=V2[i];
-        V2[i+2]=V2[i+2];
+    mesh_2.get_vertices(&V2);
+    mesh_2.get_texture(&VT2);
+    mesh_2.get_normals(&N2);
+    mesh_2.get_face_data(&FV2, &FN2, &F_VT2);
+    int number_of_faces2 = mesh_2.get_number_of_faces();
+    int number_of_vertices2 = mesh_2.get_number_of_vertices();
+
+    if((number_of_faces!= number_of_faces2)||(number_of_vertices!=number_of_vertices2)){
+        std::cout<<"error: meshes must be same size \n";
     }
 
     float* V_intermediate_1 = new float[3*number_of_vertices];
     float* V_intermediate_2 = new float[3*number_of_vertices];
-
+    float* V_intermediate = new float[3*number_of_vertices];
 
     float scale = 0.2;
-    int total_interpolations = 100;
+    int total_interpolations = 5000;
 
     glfwInit();
 
@@ -82,7 +84,7 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
     glm::mat4 ViewMatrix = glm::lookAt(
         glm::vec3(0,0,-4), // position of camera
         glm::vec3(0,0,1),  // look at vector
-        glm::vec3(0,-1,0)  //look up vector
+        glm::vec3(0,1,0)  //look up vector
     );
     glm::mat4 projectionMatrix = glm::perspective(
         glm::radians (90.0f),         //FOV
@@ -118,11 +120,11 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
     GLint Mvp = glGetUniformLocation(programID, "MVP");
 
 
-   float* vertices = new float[3*number_of_vertices]; // create array of vertices.
+    float* vertices = new float[3*number_of_vertices]; // create array of vertices.
     for(int i=0; i<3*number_of_vertices;i+=3){
-        vertices[i+1]=V[i];
-        vertices[i]=-V[i+2];
-        vertices[i+2]=V[i+1];
+        vertices[i+1]=V[i+1];
+        vertices[i]=V[i];
+        vertices[i+2]=V[i+2];
     }
 
     unsigned int* indices = new unsigned int [3*number_of_faces]; // create array containing position of vertices.
@@ -143,8 +145,18 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3*number_of_faces*sizeof(unsigned int), indices, GL_DYNAMIC_DRAW); 
 
     int it=0;
+    float t=0;
+
+    
+
     while(!glfwWindowShouldClose(window)){
+
+        if((t>=0)&&(t<1)){
+            t=1.0f/total_interpolations*(float)it;
+        }
         it=it+1;
+        
+        V1_to_V2(V, V2, &V_intermediate, &V_intermediate_1, &V_intermediate_2, t, 3*number_of_vertices);
        
 
         // Clear the screen
@@ -171,6 +183,9 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
         );        
         glDrawElements(GL_TRIANGLES, 3*number_of_faces,  GL_UNSIGNED_INT,0); // draw mesh
 
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
@@ -201,6 +216,7 @@ void V2_to_V1(float*input_array, float*goal_array, float**current_position1,floa
     delete indices;
     delete V_intermediate_1;
     delete V_intermediate_2;
+    delete V_intermediate;
 
     return 0;
  }
