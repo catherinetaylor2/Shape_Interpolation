@@ -42,6 +42,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        iterations=1;
        t=0;
     }
+    
 }
 // void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
 //     array_multiply(current_position1, input_array, array_length, t);
@@ -158,16 +159,29 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3*number_of_faces*sizeof(unsigned int), indices, GL_DYNAMIC_DRAW); 
 
-
     while(!glfwWindowShouldClose(window)){
         iterations=iterations+1;
-
-        if((t>=0)&&(t<1)){
-            t=(1.0f/total_interpolations)*(float)iterations; //*(reverse==0)+(1-(1.0f/total_interpolations)*(float)iterations)*(reverse==1);
-        }
-     
-
         V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
+
+        if(reverse==1){
+            if((t>=0)&&(t<1)){
+                t=(1.0f/total_interpolations)*(float)iterations;
+                V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
+            }
+            if(t==1){
+                t=-1;
+                iterations=0;
+            }
+            if((t<0)&&(t>-0.001)){
+                iterations =0;
+                t=0;
+            }
+            if((t>=-1)&&(t<0)){
+                t=-1*(1-(1.0f/total_interpolations)*(float)iterations);
+                V1_to_V2(V, V2, &V_intermediate, fabs(t), 3*number_of_vertices);
+            }
+        }
+      
        
 
         // Clear the screen
