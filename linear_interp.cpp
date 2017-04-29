@@ -13,7 +13,9 @@
 #include "read_Obj.hpp"
 #include <omp.h> 
 
-
+int reverse = 0;
+int iterations = 0;
+float t=0;
 void array_multiply(float**current_array, float* input_array, int array_length, float factor){
    for (int i=0; i< array_length;i++){
         (*current_array)[i] = factor*(input_array)[i];
@@ -24,10 +26,22 @@ void array_sum(float** new_array, float*array1, float*array2, int array_length){
         (*new_array)[i] =array1 [i]+array2[i];
     }
 }
-void V1_to_V2(float*input_array, float*goal_array, float**current_position, float**current_position1,float**current_position2, float t, int array_length){ //current pos1 saves value.
-    array_multiply(current_position1, input_array, array_length, (1-t));
-    array_multiply(current_position2, goal_array, array_length, t);
-    array_sum(current_position, *current_position1, *current_position2, array_length);
+void V1_to_V2(float*input_array, float*goal_array, float**current_position, float t, int array_length){ //current pos1 saves value.
+    float*current_position1 = new float[3*array_length];
+    float*current_position2 = new float[3*array_length];
+
+    array_multiply(&current_position1, input_array, array_length, (1-t));
+    array_multiply(&current_position2, goal_array, array_length, t);
+    array_sum(current_position, current_position1, current_position2, array_length);
+    delete current_position1;
+    delete current_position2;
+}
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
+    if( key== GLFW_KEY_ENTER && action == GLFW_PRESS){
+       reverse = !reverse;
+       iterations=1;
+       t=0;
+    }
 }
 // void V2_to_V1(float*input_array, float*goal_array, float**current_position1,float**current_position2, float t, int array_length){
 //     array_multiply(current_position1, input_array, array_length, t);
@@ -61,8 +75,6 @@ void V1_to_V2(float*input_array, float*goal_array, float**current_position, floa
         std::cout<<"error: meshes must be same size \n";
     }
 
-    float* V_intermediate_1 = new float[3*number_of_vertices];
-    float* V_intermediate_2 = new float[3*number_of_vertices];
     float* V_intermediate = new float[3*number_of_vertices];
 
     float scale = 0.2;
@@ -111,6 +123,8 @@ void V1_to_V2(float*input_array, float*goal_array, float**current_position, floa
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set background colour to white.
     
+    glfwSetKeyCallback(window, key_callback);
+
     GLuint VertexArrayID;
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
@@ -144,19 +158,16 @@ void V1_to_V2(float*input_array, float*goal_array, float**current_position, floa
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3*number_of_faces*sizeof(unsigned int), indices, GL_DYNAMIC_DRAW); 
 
-    int it=0;
-    float t=0;
-
-    
 
     while(!glfwWindowShouldClose(window)){
+        iterations=iterations+1;
 
         if((t>=0)&&(t<1)){
-            t=1.0f/total_interpolations*(float)it;
+            t=(1.0f/total_interpolations)*(float)iterations; //*(reverse==0)+(1-(1.0f/total_interpolations)*(float)iterations)*(reverse==1);
         }
-        it=it+1;
-        
-        V1_to_V2(V, V2, &V_intermediate, &V_intermediate_1, &V_intermediate_2, t, 3*number_of_vertices);
+     
+
+        V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
        
 
         // Clear the screen
@@ -214,8 +225,6 @@ void V1_to_V2(float*input_array, float*goal_array, float**current_position, floa
     delete F_VT2;
     delete vertices;
     delete indices;
-    delete V_intermediate_1;
-    delete V_intermediate_2;
     delete V_intermediate;
 
     return 0;
