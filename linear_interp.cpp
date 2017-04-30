@@ -16,6 +16,8 @@
 int reverse = 0;
 int iterations = 0;
 float t=0;
+int total_interpolations = 5000;
+
 void array_multiply(float**current_array, float* input_array, int array_length, float factor){
    for (int i=0; i< array_length;i++){
         (*current_array)[i] = factor*(input_array)[i];
@@ -38,9 +40,20 @@ void V1_to_V2(float*input_array, float*goal_array, float**current_position, floa
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
     if( key== GLFW_KEY_ENTER && action == GLFW_PRESS){
        reverse = !reverse;
-       iterations=1;
+       iterations=0;
        t=0;
+       total_interpolations =5000;
     }   
+    if( key== GLFW_KEY_S && action == GLFW_PRESS){
+      total_interpolations = 2*total_interpolations;
+    }   
+     if( key== GLFW_KEY_F && action == GLFW_PRESS){
+         if( total_interpolations/2>0){
+            t=0;
+            iterations=0;
+            total_interpolations = total_interpolations/2;
+         }
+    } 
 }
 
  int main(){
@@ -71,7 +84,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     float* V_intermediate = new float[3*number_of_vertices];
 
     float scale = 0.2;
-    int total_interpolations = 5000;
+
 
     glfwInit();
 
@@ -153,6 +166,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     while(!glfwWindowShouldClose(window)){
         iterations=iterations+1;
+        
         V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
 
         if(reverse==1){
@@ -164,7 +178,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 t=-1;
                 iterations=0;
             }
-            if((t<0)&&(t>-0.001)){
+            if((t<0)&&(t>-0.01)){
                 iterations =0;
                 t=0;
             }
