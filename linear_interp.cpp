@@ -18,14 +18,14 @@ int iterations = 0;
 float t=0;
 int total_interpolations = 5000;
 
-void array_multiply(float**current_array, float* input_array, int array_length, float factor){
+void array_multiply(float**output_array, float* input_array, int array_length, float factor){
    for (int i=0; i< array_length;i++){
-        (*current_array)[i] = factor*(input_array)[i];
+        (*output_array)[i] = factor*(input_array)[i];
    }
 }
-void array_sum(float** new_array, float*array1, float*array2, int array_length){
+void array_sum(float** output_array, float*array1, float*array2, int array_length){
     for (int i=0; i<array_length; i++){
-        (*new_array)[i] =array1 [i]+array2[i];
+        (*output_array)[i] =array1 [i]+array2[i];
     }
 }
 void V1_to_V2(float*input_array, float*goal_array, float**current_position, float t, int array_length){ //current pos1 saves value.
@@ -82,12 +82,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 
     float* V_intermediate = new float[3*number_of_vertices];
-
     float scale = 0.2;
 
-
     glfwInit();
-
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
@@ -139,7 +136,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     GLuint programID = LoadShaders( "vertex_shader.vertexshader", "fragment_shader.fragmentshader" );
     GLint Mvp = glGetUniformLocation(programID, "MVP");
 
-
     float* vertices = new float[3*number_of_vertices]; // create array of vertices.
     for(int i=0; i<3*number_of_vertices;i+=3){
         vertices[i+1]=V[i+1];
@@ -166,7 +162,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     while(!glfwWindowShouldClose(window)){
         iterations=iterations+1;
-        
+
         V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
 
         if(reverse==1){
