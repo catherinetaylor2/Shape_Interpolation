@@ -54,7 +54,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-
     ObjFile mesh_2("keyframe1.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
@@ -173,9 +172,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 t=-1*(1-(1.0f/total_interpolations)*(float)iterations);
                 V1_to_V2(V, V2, &V_intermediate, fabs(t), 3*number_of_vertices);
             }
-        }
-      
-       
+        }      
 
         // Clear the screen
         glClear( GL_COLOR_BUFFER_BIT );
@@ -201,7 +198,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         );        
         glDrawElements(GL_TRIANGLES, 3*number_of_faces,  GL_UNSIGNED_INT,0); // draw mesh
 
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer); //update with intermediate vertices.
         glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
