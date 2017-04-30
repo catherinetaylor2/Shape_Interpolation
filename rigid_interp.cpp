@@ -221,14 +221,13 @@ int main(){
 
 //------------------------------------------------------------------------------------------------------------------------------
 //ALGORITHM:
-       Eigen::MatrixXf U, D(2,2), Vm, Rot, Rot_t(2,2), symmetric, A_t, A(4*number_of_faces+2, 2*number_of_vertices), b(4*number_of_faces+2,1), V_new;
-        for(int i=0; i<number_of_faces; i++){
+        Eigen::MatrixXf U, D(2,2), Vm, Rot, Rot_t(2,2), symmetric, A_t, A(4*number_of_faces+2, 2*number_of_vertices), b(4*number_of_faces+2,1), V_new;
 
+        for(int i=0; i<number_of_faces; i++){
             Eigen::JacobiSVD<Eigen::MatrixXf> svd(Affine_transforms[i],  Eigen::ComputeThinU | Eigen::ComputeThinV);
             Vm = svd.matrixU();
             Vm(0,0)=-Vm(0,0);
             Vm(1,0)=-Vm(1,0);
-            
             U= svd.matrixV();
             U(0,0)=-U(0,0);
             U(1,0)=-U(1,0);
@@ -238,7 +237,6 @@ int main(){
 
             symmetric = U*D*(U.transpose());
             Rot = Vm*U.transpose();
-            
             Rot_t<< (Rot(0,0)-1)*t + 1, Rot(0,1)*t,
                     Rot(1,0)*t, (Rot(1,1)-1)*t+1;
 
@@ -267,7 +265,7 @@ int main(){
         A(4*number_of_faces,0) = 1;
         A(4*number_of_faces+1,1)=1;
 
-        V_new = ((A.transpose()*A).inverse())*A.transpose()*b; //(A.transpose()*A).llt().solve(A.transpose()*b); //
+        V_new =(A.transpose()*A).llt().solve(A.transpose()*b); 
 
         for (int i=0; i<number_of_vertices; i++){
                     V_intermediate[3*i] = V_new(2*i,0);
