@@ -14,7 +14,29 @@
 #include "read_Obj.hpp"
 #include <omp.h> 
 
-int t=0;
+float t=0;
+int total_interpolations = 100;
+int reset = 0;
+int iterations = 0;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
+    if( key== GLFW_KEY_ENTER && action == GLFW_PRESS){
+       reset = !reset;
+       iterations=0;
+       t=0;
+       total_interpolations =100;
+    }   
+    if( key== GLFW_KEY_S && action == GLFW_PRESS){
+      total_interpolations = 2*total_interpolations;
+    }   
+     if( key== GLFW_KEY_F && action == GLFW_PRESS){
+         if( total_interpolations/2>0){
+            t=0;
+            iterations=0;
+            total_interpolations = total_interpolations/2;
+         }
+    } 
+}
 
 int main(){
     ObjFile mesh("dino2.obj"); // load mesh information from object file.
@@ -99,12 +121,13 @@ int main(){
     GLuint programID = LoadShaders( "vertex_shader.vertexshader", "fragment_shader.fragmentshader" );
     GLint Mvp = glGetUniformLocation(programID, "MVP");
 
+    glfwSetKeyCallback(window, key_callback);
 
     float* vertices = new float[3*number_of_vertices]; // create array of vertices.
     for(int i=0; i<3*number_of_vertices;i+=3){
-        vertices[i+1]=V[i+1];
-        vertices[i]=V[i];
-        vertices[i+2]=V[i+2];
+        vertices[i+1] = V[i+1];
+        vertices[i] = V[i];
+        vertices[i+2] = V[i+2];
     }
 
     unsigned int* indices = new unsigned int [3*number_of_faces]; // create array containing position of vertices.
@@ -160,16 +183,18 @@ int main(){
     I<<1,0,
         0,1;
 
-        Eigen::JacobiSVD<Eigen::MatrixXf> svd(Affine_transforms[5],  Eigen::ComputeFullU | Eigen::ComputeFullV);
-        std::cout<<"A "<<Affine_transforms[5]<<"\n";
-        std::cout<<"U "<<svd.matrixU() <<"\n";
-        std::cout<<"V "<<svd.matrixV()<<"\n";
-        std::cout<<"D"<<svd.singularValues()<<"\n";
-        std::cout<<"inv_px"<<inverse_matrices[5]<<"\n";
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
-    
-    while(!glfwWindowShouldClose(window)){    
 
+    while(!glfwWindowShouldClose(window)){   
+        iterations=iterations+1;
+
+        if(reset!=0){
+            if((t>=0)&&(t<1)){
+                t=(1.0f/total_interpolations)*(float)iterations;
+               // std::cout<<" t "<<t<<"\n";
+            }
+        }
+           
         // Clear the screen
         glClear( GL_COLOR_BUFFER_BIT );
 
@@ -249,7 +274,7 @@ int main(){
                     V_intermediate[3*i + 1]= V_new(2*i+1,0);
                     V_intermediate[3*i + 2] = 0;
         }
-std::cout<<"b "<<b<<"\n";
+
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
