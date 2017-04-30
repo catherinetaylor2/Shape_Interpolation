@@ -176,13 +176,34 @@ int main(){
         ideal_affine(0,1) = A_temp(1,0);
         ideal_affine(1,0) = A_temp(3,0);
         ideal_affine(1,1) = A_temp(4,0);
-// std::cout<<"ideal "<<ideal_affine<<"\n";
+
         inverse_matrices.push_back(P.inverse());
         Affine_transforms.push_back(ideal_affine);
     }
     I<<1,0,
         0,1;
 
+    Eigen::MatrixXf U, D(2,2), Vm, Rot, sym;
+    std::vector<Eigen::MatrixXf> Rotations;
+    std::vector<Eigen::MatrixXf> symmetric;
+
+    for(int i=0; i<number_of_faces; i++){
+        Eigen::JacobiSVD<Eigen::MatrixXf> svd(Affine_transforms[i],  Eigen::ComputeThinU | Eigen::ComputeThinV);
+        Vm = svd.matrixU();
+        Vm(0,0)=-Vm(0,0);
+        Vm(1,0)=-Vm(1,0);
+        U= svd.matrixV();
+        U(0,0)=-U(0,0);
+        U(1,0)=-U(1,0);
+
+        D<<  svd.singularValues()[0], 0,
+            0,  svd.singularValues()[1];
+
+        sym = U*D*(U.transpose());
+        Rot = Vm*U.transpose();
+        Rotations.push_back(Rot);
+        symmetric.push_back(sym);
+    }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     while(!glfwWindowShouldClose(window)){   
@@ -221,33 +242,20 @@ int main(){
 
 //------------------------------------------------------------------------------------------------------------------------------
 //ALGORITHM:
-        Eigen::MatrixXf U, D(2,2), Vm, Rot, Rot_t(2,2), symmetric, A_t, A(4*number_of_faces+2, 2*number_of_vertices), b(4*number_of_faces+2,1), V_new;
+        Eigen::MatrixXf Rot_t(2,2), A_t, A(4*number_of_faces+2, 2*number_of_vertices), b(4*number_of_faces+2,1), V_new;
 
         for(int i=0; i<number_of_faces; i++){
-            Eigen::JacobiSVD<Eigen::MatrixXf> svd(Affine_transforms[i],  Eigen::ComputeThinU | Eigen::ComputeThinV);
-            Vm = svd.matrixU();
-            Vm(0,0)=-Vm(0,0);
-            Vm(1,0)=-Vm(1,0);
-            U= svd.matrixV();
-            U(0,0)=-U(0,0);
-            U(1,0)=-U(1,0);
+            Rot_t<< (Rotations[i](0,0)-1)*t + 1, Rotations[i](0,1)*t,
+                    Rotations[i](1,0)*t, (Rotations[i](1,1)-1)*t+1;
 
-            D<<  svd.singularValues()[0], 0,
-                0,  svd.singularValues()[1];
+            A_t = Rot_t*((1-t)*I+t*symmetric[i]);
 
-            symmetric = U*D*(U.transpose());
-            Rot = Vm*U.transpose();
-            Rot_t<< (Rot(0,0)-1)*t + 1, Rot(0,1)*t,
-                    Rot(1,0)*t, (Rot(1,1)-1)*t+1;
+            b(4*i) = A_t(0,0);
+            b(4*i+1) = A_t(0,1);
+            b(4*i+2) = A_t(1,0);
+            b(4*i+3) = A_t(1,1);
 
-           A_t = Rot_t*((1-t)*I+t*symmetric);
-
-           b(4*i) = A_t(0,0);
-           b(4*i+1) = A_t(0,1);
-           b(4*i+2) = A_t(1,0);
-           b(4*i+3) = A_t(1,1);
-
-           for(int k=0; k<3; k++){
+            for(int k=0; k<3; k++){
                 A(4*i, 2*(FV[3*i+k]-1)) = (inverse_matrices[i])(0, 2*k);
                 A(4*i, 2*(FV[3*i+k]-1)+1) = (inverse_matrices[i])(0, 2*k+1);
                 A(4*i+1, 2*(FV[3*i+k]-1)) = (inverse_matrices[i])(1, 2*k);
@@ -256,7 +264,7 @@ int main(){
                 A(4*i+2, 2*(FV[3*i+k]-1)+1) = (inverse_matrices[i])(3, 2*k+1);
                 A(4*i+3, 2*(FV[3*i+k]-1)) = (inverse_matrices[i])(4, 2*k);
                 A(4*i+3, 2*(FV[3*i+k]-1)+1) = (inverse_matrices[i])(4, 2*k+1);
-           }
+            }
         }
 
         b(4*number_of_faces)= (1-t)*(V[0])+t*V2[0];  
