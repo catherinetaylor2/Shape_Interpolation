@@ -57,7 +57,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
  int main(){
-    ObjFile mesh("man.obj"); // load mesh information from object file.
+    ObjFile mesh("dino2.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -67,7 +67,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("man2.obj");
+    ObjFile mesh_2("keyframe1.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -82,7 +82,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 
     float* V_intermediate = new float[3*number_of_vertices];
-    float scale = 2.5;
+    float scale = 0.2;
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -94,13 +94,24 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int width =1280, height = 720;
     GLFWwindow* window = glfwCreateWindow(width, height, "OpenGL", nullptr, nullptr);
 
+    
+    
+    glm::mat4 ViewMatrix =  glm::lookAt(
+                            glm::vec3(0,0,-4), // position of camera
+                            glm::vec3(0,0,1),  // look at vector
+                            glm::vec3(0,1,0)  //look up vector
+    );
+    if((V[2]!=0)||(V[5]!=0)){
+        std::cout<<"line 105 \n";
+        ViewMatrix =glm::lookAt(
+                    glm::vec3(0,5,-4), // position of camera
+                    glm::vec3(0,5,1),  // look at vector
+                    glm::vec3(0,15,0)  //look up vector
+        );
+        scale=2.5;
+    }
     glm::mat4 ModelMatrix = glm::mat4(scale); //Create MVP matrices.
     ModelMatrix[3].w = 1.0;
-    glm::mat4 ViewMatrix = glm::lookAt(
-        glm::vec3(0,0,-4), // position of camera
-        glm::vec3(0,0,1),  // look at vector
-        glm::vec3(0,1,0)  //look up vector
-    );
     glm::mat4 projectionMatrix = glm::perspective(
         glm::radians (90.0f),         //FOV
         (float)width/(float)height, // Aspect Ratio. 
@@ -183,7 +194,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 V1_to_V2(V, V2, &V_intermediate, fabs(t), 3*number_of_vertices);
             }
         }      
-
+       
         // Clear the screen
         glClear( GL_COLOR_BUFFER_BIT );
 
