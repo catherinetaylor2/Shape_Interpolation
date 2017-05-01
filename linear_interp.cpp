@@ -57,7 +57,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
  int main(){
-    ObjFile mesh("dino2.obj"); // load mesh information from object file.
+    ObjFile mesh("man.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -67,7 +67,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("keyframe1.obj");
+    ObjFile mesh_2("man2.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -82,7 +82,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 
     float* V_intermediate = new float[3*number_of_vertices];
-    float scale = 0.2;
+    float scale = 2.5;
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);

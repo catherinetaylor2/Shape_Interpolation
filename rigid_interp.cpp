@@ -15,7 +15,7 @@
 #include <omp.h> 
 
 float t=0;
-int total_interpolations = 100;
+int total_interpolations = 1000;
 int reset = 0;
 int iterations = 0;
 
@@ -39,7 +39,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 int main(){
-    ObjFile mesh("dino2.obj"); // load mesh information from object file.
+    ObjFile mesh("man.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -49,7 +49,7 @@ int main(){
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("keyframe1.obj");
+    ObjFile mesh_2("man2.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -58,18 +58,17 @@ int main(){
     mesh_2.get_face_data(&FV2, &FN2, &F_VT2);
     int number_of_faces2 = mesh_2.get_number_of_faces();
     int number_of_vertices2 = mesh_2.get_number_of_vertices();
+    
 
     if((number_of_faces!= number_of_faces2)||(number_of_vertices!=number_of_vertices2)){
         std::cout<<"error: meshes must be same size \n";
     }
 
-    float scale = 0.2;
+    float scale = 3;
 
     float* V_intermediate = new float[3*number_of_vertices];
 
-
-
- glfwInit();
+    glfwInit();
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -112,7 +111,6 @@ int main(){
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set background colour to white.
     
-
     GLuint VertexArrayID;
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
@@ -150,7 +148,7 @@ int main(){
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 //ALGORITHM:
 
-    Eigen::MatrixXf ideal_affine(2,2), P(6,6), Q(6,1), A_temp, G, I(2,2);
+    Eigen::MatrixXf ideal_affine(2,2), P(6,6), Q(6,1), A_temp, G, identity(2,2);
     std::vector<Eigen::MatrixXf> Affine_transforms;
     std::vector<Eigen::MatrixXf> inverse_matrices;
     int index_1, index_2, index_3;
@@ -180,8 +178,8 @@ int main(){
         inverse_matrices.push_back(P.inverse());
         Affine_transforms.push_back(ideal_affine);
     }
-    I<<1,0,
-        0,1;
+    identity<<1,0,
+              0,1;
 
     Eigen::MatrixXf U, D(2,2), Vm, Rot, sym;
     std::vector<Eigen::MatrixXf> Rotations;
@@ -190,19 +188,16 @@ int main(){
     for(int i=0; i<number_of_faces; i++){
         Eigen::JacobiSVD<Eigen::MatrixXf> svd(Affine_transforms[i],  Eigen::ComputeThinU | Eigen::ComputeThinV);
         Vm = svd.matrixU();
-        Vm(0,0)=-Vm(0,0);
-        Vm(1,0)=-Vm(1,0);
         U= svd.matrixV();
-        U(0,0)=-U(0,0);
-        U(1,0)=-U(1,0);
 
-        D<<  svd.singularValues()[0], 0,
+        D<< svd.singularValues()[0], 0,
             0,  svd.singularValues()[1];
 
         sym = U*D*(U.transpose());
         Rot = Vm*U.transpose();
         Rotations.push_back(Rot);
         symmetric.push_back(sym);
+       
     }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -212,7 +207,6 @@ int main(){
         if(reset!=0){
             if((t>=0)&&(t<1)){
                 t=(1.0f/total_interpolations)*(float)iterations;
-               // std::cout<<" t "<<t<<"\n";
             }
         }
            
@@ -248,7 +242,7 @@ int main(){
             Rot_t<< (Rotations[i](0,0)-1)*t + 1, Rotations[i](0,1)*t,
                     Rotations[i](1,0)*t, (Rotations[i](1,1)-1)*t+1;
 
-            A_t = Rot_t*((1-t)*I+t*symmetric[i]);
+            A_t = Rot_t*((1-t)*identity+t*symmetric[i]);
 
             b(4*i) = A_t(0,0);
             b(4*i+1) = A_t(0,1);
@@ -273,7 +267,7 @@ int main(){
         A(4*number_of_faces,0) = 1;
         A(4*number_of_faces+1,1)=1;
 
-        V_new =(A.transpose()*A).llt().solve(A.transpose()*b); 
+        V_new = (A.transpose()*A).llt().solve(A.transpose()*b); 
 
         for (int i=0; i<number_of_vertices; i++){
                     V_intermediate[3*i] = V_new(2*i,0);
@@ -281,11 +275,11 @@ int main(){
                     V_intermediate[3*i + 2] = 0;
         }
 
+//------------------------------------------------------------------------------------------------------------------------------  
+
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
         glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-
- //------------------------------------------------------------------------------------------------------------------------------       
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
