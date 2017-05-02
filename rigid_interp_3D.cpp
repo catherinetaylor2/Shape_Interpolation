@@ -1,8 +1,3 @@
-//---------------------------COMPUTER ANIMATION AND GAMES 2: COURSE WORK 2--------------------------------------------------
-//Linear intepolation.
-//
-//Created by Catherine Taylor 27/04/17
-
 #include <glew.h>
 #include <glfw3.h>
 #include <cstdlib>
@@ -11,57 +6,16 @@
 #include <cmath>
 #include <string>
 #include <cstdio>
+#include <vector>
 #include <glm/glm.hpp>
 #include "shader.hpp"
 #include <glm/gtx/transform.hpp>
+#include <Eigen/Eigen/Dense>
 #include "read_Obj.hpp"
 #include <omp.h> 
 
-int reverse = 0;
-int iterations = 0;
-float t=0;
-int total_interpolations = 5000;
-
-void array_multiply(float**output_array, float* input_array, int array_length, float factor){
-   for (int i=0; i< array_length;i++){
-        (*output_array)[i] = factor*(input_array)[i];
-   }
-}
-void array_sum(float** output_array, float*array1, float*array2, int array_length){
-    for (int i=0; i<array_length; i++){
-        (*output_array)[i] =array1 [i]+array2[i];
-    }
-}
-void V1_to_V2(float*input_array, float*goal_array, float**current_position, float t, int array_length){ //current pos1 saves value.
-    float*current_position1 = new float[3*array_length];
-    float*current_position2 = new float[3*array_length];
-    array_multiply(&current_position1, input_array, array_length, (1-t));
-    array_multiply(&current_position2, goal_array, array_length, t);
-    array_sum(current_position, current_position1, current_position2, array_length);
-    delete current_position1;
-    delete current_position2;
-}
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
-    if( key== GLFW_KEY_ENTER && action == GLFW_PRESS){
-       reverse = !reverse;
-       iterations=0;
-       t=0;
-       total_interpolations =5000;
-    }   
-    if( key== GLFW_KEY_S && action == GLFW_PRESS){
-      total_interpolations = 2*total_interpolations;
-    }   
-     if( key== GLFW_KEY_F && action == GLFW_PRESS){
-         if( total_interpolations/2>0){
-            t=0;
-            iterations=0;
-            total_interpolations = total_interpolations/2;
-         }
-    } 
-}
-
- int main(){
-    ObjFile mesh("dino2.obj"); // load mesh information from object file.
+int main(){
+    ObjFile mesh("cube1.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -71,7 +25,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("keyframe1.obj");
+    ObjFile mesh_2("cube2.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -85,8 +39,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         std::cout<<"error: meshes must be same size \n";
     }
 
-    float* V_intermediate = new float[3*number_of_vertices];
-    float scale = 0.2;
+    int scale = 2.5;
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -97,22 +50,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     
     int width =1280, height = 720;
     GLFWwindow* window = glfwCreateWindow(width, height, "OpenGL", nullptr, nullptr);
-    
-    glm::mat4 ViewMatrix =  glm::lookAt(
-                            glm::vec3(0,0,-4), // position of camera
-                            glm::vec3(0,0,1),  // look at vector
-                            glm::vec3(0,1,0)  //look up vector
-    );
-    if((V[2]!=0)||(V[5]!=0)){ // change position for cube.
-        ViewMatrix =glm::lookAt(
-                    glm::vec3(0,5,-4), // position of camera
-                    glm::vec3(0,5,1),  // look at vector
+       glm::mat4 ModelMatrix = glm::mat4(scale); //Create MVP matrices.
+    ModelMatrix[3].w = 1.0;
+    glm::mat4 ViewMatrix =glm::lookAt(
+                    glm::vec3(0,3,-4), // position of camera
+                    glm::vec3(0,3,1),  // look at vector
                     glm::vec3(0,15,0)  //look up vector
         );
-        scale=2.5;
-    }
-    glm::mat4 ModelMatrix = glm::mat4(scale); //Create MVP matrices.
-    ModelMatrix[3].w = 1.0;
     glm::mat4 projectionMatrix = glm::perspective(
         glm::radians (90.0f),         //FOV
         (float)width/(float)height, // Aspect Ratio. 
@@ -138,8 +82,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // set background colour to white.
     
-    glfwSetKeyCallback(window, key_callback);
-
     GLuint VertexArrayID;
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
@@ -148,11 +90,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     GLuint programID = LoadShaders( "vertex_shader.vertexshader", "fragment_shader.fragmentshader" );
     GLint Mvp = glGetUniformLocation(programID, "MVP");
 
+
     float* vertices = new float[3*number_of_vertices]; // create array of vertices.
     for(int i=0; i<3*number_of_vertices;i+=3){
-        vertices[i+1]=V[i+1];
-        vertices[i]=V[i];
-        vertices[i+2]=V[i+2];
+        vertices[i+1] = V[i+1];
+        vertices[i] = V[i];
+        vertices[i+2] = V[i+2];
     }
 
     unsigned int* indices = new unsigned int [3*number_of_faces]; // create array containing position of vertices.
@@ -172,30 +115,39 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3*number_of_faces*sizeof(unsigned int), indices, GL_DYNAMIC_DRAW); 
 
-    while(!glfwWindowShouldClose(window)){
-        iterations=iterations+1;
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//ALGORITHM :
 
-        V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
+Eigen::Vector3d v1, v2, v3, v4, v1_v2, v2_v3, cross;
+int index_1, index_2, index_3;
 
-        if(reverse==1){
-            if((t>=0)&&(t<1)){
-                t=(1.0f/total_interpolations)*(float)iterations;
-                V1_to_V2(V, V2, &V_intermediate, t, 3*number_of_vertices);
-            }
-            if(t==1){
-                t=-1;
-                iterations=0;
-            }
-            if((t<0)&&(t>-0.01)){
-                iterations =0;
-                t=0;
-            }
-            if((t>=-1)&&(t<0)){
-                t=-1*(1-(1.0f/total_interpolations)*(float)iterations);
-                V1_to_V2(V, V2, &V_intermediate, fabs(t), 3*number_of_vertices);
-            }
-        }      
-       
+for (int i=0; i<number_of_faces;i++){
+    index_1 = FV[3*i]-1, index_2 = FV[3*i+1]-1, index_3 = FV[3*i+2]-1;
+    v1 << V[3*index_1],
+    V[3*index_1+1],
+    V[3*index_1+2];
+
+    v2 << V[3*index_2],
+    V[3*index_2+1],
+    V[3*index_2+2];
+
+    v3 << V[3*index_3],
+    V[3*index_3+1],
+    V[3*index_3+2];
+
+    v1_v2 = v2 - v1;
+    v2_v3 = v3 - v2;
+
+    cross = v1_v2.cross(v2_v3);
+    v4 = 1/3.0f*(v1+v2+v3) + cross*1/cross.norm();
+}
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    while(!glfwWindowShouldClose(window)){   
+    
+           
         // Clear the screen
         glClear( GL_COLOR_BUFFER_BIT );
 
@@ -220,9 +172,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         );        
         glDrawElements(GL_TRIANGLES, 3*number_of_faces,  GL_UNSIGNED_INT,0); // draw mesh
 
-        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer); //update with intermediate vertices.
-        glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+//  glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+//         glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
+//         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
@@ -241,7 +193,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     mesh_2.clean_up(V2, N2, VT2, FV2, FN2, F_VT2);
     delete[] vertices;
     delete[] indices;
-    delete[] V_intermediate;
 
     return 0;
- }
+}
