@@ -14,6 +14,8 @@
 #include "read_Obj.hpp"
 #include <omp.h> 
 
+int t=0;
+
 int main(){
     ObjFile mesh("cube1.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
@@ -38,6 +40,8 @@ int main(){
     if((number_of_faces!= number_of_faces2)||(number_of_vertices!=number_of_vertices2)){
         std::cout<<"error: meshes must be same size \n";
     }
+
+    float* V_intermediate = new float[3*number_of_vertices];
 
     int scale = 2.5;
 
@@ -118,8 +122,15 @@ int main(){
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //ALGORITHM :
 
-Eigen::Vector3d v1, v2, v3, v4, v1_v2, v2_v3, cross;
+Eigen::Vector3f v1, v2, v3, v4, v1_v2, v2_v3, cross_v, u1, u2, u3, u4, u1_u2, u2_u3, cross_u, T, T_t;
+Eigen::MatrixXf V_t(3,3), U_t(3,3), M, V_svd, U_svd, R, S, D(3,3), K(4*number_of_faces, number_of_faces+number_of_vertices), kx(4,4), identity(3,3);
+Eigen::Vector4f q0;
 int index_1, index_2, index_3;
+std::vector<Eigen::Vector3f> translations;
+std::vector<Eigen::MatrixXf> rotations;
+std::vector<Eigen::MatrixXf> symmetric;
+std::vector<Eigen::MatrixXf> inv_kx;
+float* areas = new float [number_of_faces];
 
 for (int i=0; i<number_of_faces;i++){
     index_1 = FV[3*i]-1, index_2 = FV[3*i+1]-1, index_3 = FV[3*i+2]-1;
@@ -137,11 +148,66 @@ for (int i=0; i<number_of_faces;i++){
 
     v1_v2 = v2 - v1;
     v2_v3 = v3 - v2;
+    cross_v = v1_v2.cross(v2_v3);
+    v4 = 1/3.0f*(v1+v2+v3) + cross_v*1/cross_v.norm();
 
-    cross = v1_v2.cross(v2_v3);
-    v4 = 1/3.0f*(v1+v2+v3) + cross*1/cross.norm();
+//  AB = v2-v1;
+//     AC = v3-v1;
+//     area{i} = norm(cross(AB,AC))/2;
+
+    areas[i] = cross_v.norm()/2.0f;
+
+    V_t<<v1-v4, v2-v4, v3-v4;
+
+    u1 << V2[3*index_1],
+    V2[3*index_1+1],
+    V2[3*index_1+2];
+
+    u2 << V2[3*index_2],
+    V2[3*index_2+1],
+    V2[3*index_2+2];
+
+    u3 << V2[3*index_3],
+    V2[3*index_3+1],
+    V2[3*index_3+2];
+
+    u1_u2 = u2 - u1;
+    u2_u3 = u3 - u2;
+
+    cross_u = u1_u2.cross(u2_u3);
+    u4 = 1/3.0f*(u1+u2+u3) + cross_u*1/cross_u.norm();
+
+    U_t<< u1-u4, u2-u4, u3-u4;
+
+    M = U_t*V_t.inverse();
+    T = u1 - M*v1;
+
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(M,  Eigen::ComputeThinU | Eigen::ComputeThinV);
+    V_svd = svd.matrixU();
+    U_svd = svd.matrixV();
+    D << svd.singularValues()[0], 0, 0,
+        0,  svd.singularValues()[1], 0,
+        0, 0, svd.singularValues()[2];
+
+    S = U_svd*D*(U_svd.transpose());
+    R = V_svd*U_svd.transpose();
+
+    kx << v1.transpose(), 1,
+          v2.transpose(), 1,
+          v3.transpose(), 1,
+          v4.transpose(),1;
+
+    rotations.push_back(R);
+    symmetric.push_back(S);
+    translations.push_back(T);
+    inv_kx.push_back(kx.inverse());
+
 }
 
+q0 <<1, 0, 0, 0;
+identity<< 1,0,0,
+            0,1,0,
+            0,0,1;
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -172,9 +238,72 @@ for (int i=0; i<number_of_faces;i++){
         );        
         glDrawElements(GL_TRIANGLES, 3*number_of_faces,  GL_UNSIGNED_INT,0); // draw mesh
 
-//  glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-//         glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
-//         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        //-------------------------------------------------------------
+        //ALGORTIHM:
+
+        Eigen::MatrixXf S_t, Rot_t(3,3), M_t, bx(4*number_of_faces,1), by(4*number_of_faces,1), bz(4*number_of_faces,1), K(4*number_of_faces, number_of_faces+number_of_vertices), V_x, V_y, V_z;
+        Eigen::Vector4f q, q_t;
+        float w, x, y,z, angle;
+        int index;
+        for (int i=0; i<4*number_of_faces; i++){
+            for (int j=0;  j<number_of_faces+number_of_vertices; j++){
+                K(i,j) = 0;
+            }
+        }
+
+        for(int i=0; i<number_of_faces;i++){
+         S_t = (1-t)*identity + t*symmetric[i];
+          T_t = t*translations[i];
+
+            //quaternions:
+            w = 0.5f* sqrt(1 + rotations[i](0,0)+ rotations[i](1,1)+ rotations[i](2,2));
+            x = 1/(4*w)*(rotations[i](1,2) - rotations[i](2,1)); 
+            y = 1/(4*w)*(rotations[i](2,0) - rotations[i](0,2)); 
+            z = 1/(4*w)*(rotations[i](0,1) - rotations[i](1,0)); 
+            q<< w, x , y, z;
+
+            angle = acos(q0.dot(q));
+            q_t = 1/sin(angle)*(sin((1-t)*angle))*q0 + sin(t*angle)/sin(angle)*q;
+
+            Rot_t<< 1-2*pow(q_t(2),2) - 2*pow(q_t(3),2), 2*q_t(1)*q_t(2)+2*q_t(0)*q_t(3), 2*q_t(3)*q_t(1)- 2*q_t(0)*q_t(2),
+                    2*q_t(1)*q_t(2)-2*q_t(0)*q_t(3), 1-2*pow(q_t(1),2) - 2*pow(q_t(3),2), 2*q_t(2)*q_t(3) + 2*q_t(0)*q_t(1),
+                    2*q_t(1)*q_t(3)+2*q_t(0)*q_t(2), 2*q_t(2)*q_t(3)-2*q_t(0)*q_t(1), 1- 2*pow(q_t(1),2) - 2*pow(q_t(2),2);
+
+            M_t = Rot_t*S_t;
+
+            for(int j=0; j<3; j++){
+                index = FV[3*i+j]-1;
+           
+                bx(4*i+j) = areas[i]*M_t(0,j);
+                by(4*i+j) = areas[i]*M_t(1,j);
+                bz(4*i+j) = areas[i]*M_t(2,j);
+                for(int k=0; k<4; k++){
+                  //       std::cout<<"index "<<index<<" j "<<j<<"k "<<k<<" "<<inv_kx[i](k,j)<<"\n";
+                    K(4*i+k, index) = areas[i]*inv_kx[i](k,j);
+                }
+            }
+            bx(4*i+3) = areas[i]*T_t(0);
+            by(4*i+3) = areas[i]*T_t(1);
+            bz(4*i+3) = areas[i]*T_t(2);
+            for (int j=0; j<4; j++){
+                K(4*i+j, number_of_vertices + i) =areas[i]*inv_kx[i](j, 3);
+            }
+        }
+
+        V_x = ((K.transpose()*K).inverse())*K.transpose()*bx;
+        V_y = (K.transpose()*K).inverse()*K.transpose()*by;
+        V_z = (K.transpose()*K).inverse()*K.transpose()*bz;
+        for(int i=0; i<number_of_vertices; i++){
+            V_intermediate[3*i] = V_x(i);
+            V_intermediate[3*i+1] = V_y(i);
+            V_intermediate[3*i+2 ] = V_z(i);
+        }
+//std::cout<<"V_x "<<K.transpose()*K<<"\n";
+        //--------------------------------------------------------------
+
+ glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferSubData(GL_ARRAY_BUFFER, 0,  3*number_of_vertices*sizeof(float), &V_intermediate[0]);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
@@ -193,6 +322,8 @@ for (int i=0; i<number_of_faces;i++){
     mesh_2.clean_up(V2, N2, VT2, FV2, FN2, F_VT2);
     delete[] vertices;
     delete[] indices;
+    delete [] areas;
+    delete [] V_intermediate;
 
     return 0;
 }
