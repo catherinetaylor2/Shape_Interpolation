@@ -71,7 +71,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("keyframe1.obj");
+    ObjFile mesh_2("dino3.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);

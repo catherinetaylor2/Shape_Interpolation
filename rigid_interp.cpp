@@ -39,7 +39,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 int main(){
-    ObjFile mesh("man.obj"); // load mesh information from object file.
+    ObjFile mesh("dino2.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -49,7 +49,7 @@ int main(){
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("man2.obj");
+    ObjFile mesh_2("dino3.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -64,7 +64,7 @@ int main(){
         std::cout<<"error: meshes must be same size \n";
     }
 
-    float scale = 3;
+    float scale = 0.2;
 
     float* V_intermediate = new float[3*number_of_vertices];
 
@@ -149,9 +149,16 @@ int main(){
 //ALGORITHM:
 
     Eigen::MatrixXf ideal_affine(2,2), P(6,6), Q(6,1), A_temp, G, identity(2,2);
+    Eigen::Vector4f q0, q, q_t;
     std::vector<Eigen::MatrixXf> Affine_transforms;
     std::vector<Eigen::MatrixXf> inverse_matrices;
     int index_1, index_2, index_3;
+    float*angles = new float[number_of_faces];
+    float* quaternions = new float[4*number_of_faces];
+    float w,x,y,z;
+
+    q0 <<1,0,0,0;
+
     for (int i=0; i<number_of_faces; i++){
         index_1 = FV[3*i]-1, index_2 = FV[3*i+1]-1, index_3 = FV[3*i+2]-1;
         P<< V[3*index_1],V[3*index_1+1], 1, 0, 0, 0,
@@ -182,7 +189,6 @@ int main(){
               0,1;
 
     Eigen::MatrixXf U, D(2,2), Vm, Rot, sym;
-    std::vector<Eigen::MatrixXf> Rotations;
     std::vector<Eigen::MatrixXf> symmetric;
 
     for(int i=0; i<number_of_faces; i++){
@@ -195,8 +201,23 @@ int main(){
 
         sym = U*D*(U.transpose());
         Rot = Vm*U.transpose();
-        Rotations.push_back(Rot);
+
+        w = 0.5f* sqrt(1 + Rot(0,0)+ Rot(1,1)+ 1);
+        x = 0; 
+        y = 0; 
+        z = 1/(4*w)*(Rot(0,1) - Rot(1,0)); 
+
+        q<<w,x,y,z;
+
+        quaternions[4*i]= w;
+        quaternions[4*i+1]=x;
+        quaternions[4*i+2]=y;
+        quaternions[4*i+3]=z;
+
         symmetric.push_back(sym);
+
+        angles[i] = acos(q0.dot(q));
+
        
     }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -233,14 +254,17 @@ int main(){
                              0 // offset
         );        
         glDrawElements(GL_TRIANGLES, 3*number_of_faces,  GL_UNSIGNED_INT,0); // draw mesh
-
 //------------------------------------------------------------------------------------------------------------------------------
 //ALGORITHM:
         Eigen::MatrixXf Rot_t(2,2), A_t, A(4*number_of_faces+2, 2*number_of_vertices), b(4*number_of_faces+2,1), V_new;
 
         for(int i=0; i<number_of_faces; i++){
-            Rot_t<< (Rotations[i](0,0)-1)*t + 1, Rotations[i](0,1)*t,
-                    Rotations[i](1,0)*t, (Rotations[i](1,1)-1)*t+1;
+
+            q<< quaternions[4*i], quaternions[4*i+1], quaternions[4*i+2],  quaternions[4*i+3];
+            q_t = 1/sin(angles[i])*(sin((1-t)*angles[i]))*q0 + sin(t*angles[i])/sin(angles[i])*q;
+
+            Rot_t<< 1-2*q_t(2)*q_t(2) - 2*q_t(3)*q_t(3), 2*q_t(1)*q_t(2)+2*q_t(0)*q_t(3), 
+                    2*q_t(1)*q_t(2)-2*q_t(0)*q_t(3), 1-2*q_t(1)*q_t(1) - 2*q_t(3)*q_t(3);
 
             A_t = Rot_t*((1-t)*identity+t*symmetric[i]);
 
@@ -299,6 +323,8 @@ int main(){
     delete[] vertices;
     delete[] indices;
     delete[] V_intermediate;
+    delete []  angles;
+    delete [] quaternions;
 
     return 0;
 }

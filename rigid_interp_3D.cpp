@@ -39,7 +39,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 int main(){
-    ObjFile mesh("sphere1.obj"); // load mesh information from object file.
+    ObjFile mesh("sphere_1.obj"); // load mesh information from object file.
 	float* V , *N, *VT;
     int *FV, *FN, *F_VT;
     mesh.get_vertices(&V);
@@ -49,7 +49,7 @@ int main(){
     int number_of_faces = mesh.get_number_of_faces();
     int number_of_vertices = mesh.get_number_of_vertices();
   
-    ObjFile mesh_2("sphere2.obj");
+    ObjFile mesh_2("sphere_2.obj");
     float* V2 , *N2, *VT2;
     int *FV2, *FN2, *F_VT2;
     mesh_2.get_vertices(&V2);
@@ -65,7 +65,7 @@ int main(){
 
     float* V_intermediate = new float[3*number_of_vertices];
 
-    int scale = 2.5;
+    int scale = 1;
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -79,8 +79,8 @@ int main(){
        glm::mat4 ModelMatrix = glm::mat4(scale); //Create MVP matrices.
     ModelMatrix[3].w = 1.0;
     glm::mat4 ViewMatrix =glm::lookAt(
-                    glm::vec3(0,3,-4), // position of camera
-                    glm::vec3(0,3,1),  // look at vector
+                    glm::vec3(0,0,-4), // position of camera
+                    glm::vec3(0,0,1),  // look at vector
                     glm::vec3(0,15,0)  //look up vector
         );
     glm::mat4 projectionMatrix = glm::perspective(
@@ -114,7 +114,7 @@ int main(){
     glBindVertexArray(VertexArrayID);
 
     //load shaders for mesh and selected points.
-    GLuint programID = LoadShaders( "vertex_shader.vertexshader", "fragment_shader.fragmentshader" );
+    GLuint programID = LoadShaders( "vertex_shader_3D.vertexshader", "fragment_shader.fragmentshader" );
     GLint Mvp = glGetUniformLocation(programID, "MVP");
 
 
@@ -154,10 +154,11 @@ std::vector<Eigen::MatrixXf> inv_kx;
 float* areas = new float [number_of_faces];
 float* quaternions = new float [4*number_of_faces];
 float* translations = new float [3*number_of_faces];
+float* angle = new float [number_of_faces];
 
 Eigen::MatrixXf S_t, Rot_t(3,3), M_t, bx(4*number_of_faces,1), by(4*number_of_faces,1), bz(4*number_of_faces,1), V_x, V_y, V_z;
 Eigen::Vector4f q, q_t;
-float w, x, y,z, angle;
+float w, x, y,z;
 int index;
 for (int i=0; i<4*number_of_faces; i++){
     for (int j=0;  j<number_of_faces+number_of_vertices; j++){
@@ -260,6 +261,12 @@ identity<< 1,0,0,
         for (int j=0; j<4; j++){
             K(4*i+j, number_of_vertices + i) =areas[i]*inv_kx[i](j, 3);
         }
+
+        
+            q<< quaternions[4*i], quaternions[4*i+1] , quaternions[4*i+2], quaternions[4*i+3];
+
+            angle[i] = acos(q0.dot(q));
+
     }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -306,10 +313,7 @@ identity<< 1,0,0,
                 t*translations[3*i+1],
                 t*translations[3*i+2];
 
-            q<< quaternions[4*i], quaternions[4*i+1] , quaternions[4*i+2], quaternions[4*i+3];
-
-            angle = acos(q0.dot(q));
-            q_t = 1/sin(angle)*(sin((1-t)*angle))*q0 + sin(t*angle)/sin(angle)*q;
+            q_t = 1/sin(angle[i])*(sin((1-t)*angle[i]))*q0 + sin(t*angle[i])/sin(angle[i])*q;
 
             Rot_t<< 1-2*q_t(2)*q_t(2) - 2*q_t(3)*q_t(3), 2*q_t(1)*q_t(2)+2*q_t(0)*q_t(3), 2*q_t(3)*q_t(1)- 2*q_t(0)*q_t(2),
                     2*q_t(1)*q_t(2)-2*q_t(0)*q_t(3), 1-2*q_t(1)*q_t(1) - 2*q_t(3)*q_t(3), 2*q_t(2)*q_t(3) + 2*q_t(0)*q_t(1),
@@ -363,6 +367,7 @@ identity<< 1,0,0,
     delete [] V_intermediate;
     delete [] quaternions;
     delete [] translations;
+    delete [] angle;
 
     return 0;
 }
