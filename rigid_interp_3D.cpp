@@ -146,7 +146,7 @@ int main(){
 //ALGORITHM :
 
 Eigen::Vector3f v1, v2, v3, v4, v1_v2, v2_v3, cross_v, u1, u2, u3, u4, u1_u2, u2_u3, cross_u, T ;
-Eigen::MatrixXf V_t(3,3), U_t(3,3), M, V_svd, U_svd, R, S, D(3,3), K(4*number_of_faces, number_of_faces+number_of_vertices), kx(4,4), identity(3,3), T_t(3,1);
+Eigen::MatrixXf V_t(3,3), U_t(3,3), M, V_svd, U_svd, R, S, D(3,3), K(4*number_of_faces, number_of_faces+number_of_vertices), kx(4,4), identity(3,3), T_t(3,1), K_inv;
 Eigen::Vector4f q0;
 int index_1, index_2, index_3;
 std::vector<Eigen::MatrixXf> symmetric;
@@ -249,6 +249,18 @@ q0 <<1, 0, 0, 0;
 identity<< 1,0,0,
             0,1,0,
             0,0,1;
+
+    for(int i=0; i<number_of_faces; i++){
+        for(int j=0; j<3; j++){
+            index = FV[3*i+j]-1;
+            for(int k=0; k<4; k++){
+                K(4*i+k, index) = areas[i]*inv_kx[i](k,j);
+            }
+        }
+        for (int j=0; j<4; j++){
+            K(4*i+j, number_of_vertices + i) =areas[i]*inv_kx[i](j, 3);
+        }
+    }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     while(!glfwWindowShouldClose(window)){   
@@ -306,21 +318,13 @@ identity<< 1,0,0,
             M_t = Rot_t*S_t;
 
             for(int j=0; j<3; j++){
-                index = FV[3*i+j]-1;
-           
                 bx(4*i+j) = areas[i]*M_t(0,j);
                 by(4*i+j) = areas[i]*M_t(1,j);
                 bz(4*i+j) = areas[i]*M_t(2,j);
-                for(int k=0; k<4; k++){
-                    K(4*i+k, index) = areas[i]*inv_kx[i](k,j);
-                }
             }
             bx(4*i+3) = areas[i]*T_t(0);
             by(4*i+3) = areas[i]*T_t(1);
             bz(4*i+3) = areas[i]*T_t(2);
-            for (int j=0; j<4; j++){
-                K(4*i+j, number_of_vertices + i) =areas[i]*inv_kx[i](j, 3);
-            }
         }
 
         V_x = (K.transpose()*K).llt().solve(K.transpose()*bx);
